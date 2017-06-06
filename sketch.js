@@ -1,9 +1,9 @@
 var MASS = 100;
-var LENGTH = 100;
+var LENGTH = 150;
 var GRAVITY = 9.81;
 var SPRING_K = 50;
-var MAX_POINTS = 600;
-var SCALE=12;
+var MAX_POINTS = 1000;
+var VISCOSITY = 0.001;
 
 var dt = 0.1;
 
@@ -29,8 +29,8 @@ function setup() {
   vx = 0;
   vy = 0;
 
-  theta1 = PI/6;
-  theta2 = PI/6;
+  theta1 = 0;
+  theta2 = 0;
   p1 = 0;
   p2 = 0
   dtheta1 = 0;
@@ -38,17 +38,10 @@ function setup() {
   dp1 = 0;
   dp2 = 0
 
-  paths.push(new Path(0, 0, 0));
+  x = LENGTH*(Math.sin(theta1) + Math.sin(theta2));
+  y = LENGTH*(Math.cos(theta1) + Math.cos(theta2));
 
-  //sigmaBox = createInput();
-  //sigmaBox.position(20,20);
-  //sigmaBox.value(INIT_SIGMA);
-  //betaBox = createInput();
-  //betaBox.position(20, 50);
-  //betaBox.value(INIT_BETA);
-  //rhoBox = createInput();
-  //rhoBox.position(20, 80);
-  //rhoBox.value(INIT_RHO);
+  paths.push(new Path(x, y, 0));
 }
 
 function simulate_spring_pendulum() {
@@ -65,8 +58,6 @@ function simulate_spring_pendulum() {
     x += vx*dt;
     y += vy*dt;
 
-    //line(0, 0, x, y);
-
     p.push(x, y);
     p.display();
   }
@@ -76,21 +67,52 @@ function simulate_double_pendulum() {
   for (var i=0; i < paths.length; ++i) {
     p = paths[i];
 
-    var ddtheta = -GRAVITY/LENGTH*Math.sin(theta1);
-    dtheta1 += ddtheta * dt;
+    var ddtheta2 = -GRAVITY/LENGTH*Math.sin(theta2) - dtheta2*VISCOSITY;
+    var ddtheta1 = -GRAVITY/LENGTH*(Math.sin(theta1) + Math.cos(theta2)*Math.sin(theta1 - theta2)) - dtheta1*VISCOSITY;
+    dtheta1 += ddtheta1 * dt;
+    dtheta2 += ddtheta2 * dt;
     theta1 += dtheta1 * dt;
+    theta2 += dtheta2 * dt;
 
-    x = LENGTH*Math.sin(theta1);
-    y = LENGTH*Math.cos(theta1);
+    x1 = LENGTH*Math.sin(theta1);
+    y1 = LENGTH*Math.cos(theta1);
 
-    p.push(x, y);
+    x = LENGTH*(Math.sin(theta1) + Math.sin(theta2));
+    y = LENGTH*(Math.cos(theta1) + Math.cos(theta2));
+
+    //line(0, 0, x1, y1);
+    //line(x1, y1, x, y);
+
+    p.push(x, y, dtheta1*dtheta1 + dtheta2*dtheta2);
     p.display();
   }
 }
 
+function setPendulumEnd() {
+  var xPos = mouseX-width/2;
+  var yPos = mouseY-height/2;
+
+  var alpha = atan2(xPos, yPos);
+  var r = Math.sqrt(xPos*xPos + yPos*yPos);
+  if (r >= 2*LENGTH) {
+    theta1 = theta2 = alpha;
+  } else {
+    theta1 = alpha - Math.acos(r/(2*LENGTH));
+    theta2 = alpha + Math.acos(r/(2*LENGTH));
+  }
+  dtheta1 = dtheta2 = 0;
+  x2 = LENGTH*(Math.sin(theta1) + Math.sin(theta2));
+  y2 = LENGTH*(Math.cos(theta1) + Math.cos(theta2));
+  paths[0].setAll(x2, y2, -1);
+}
+
 function mouseReleased() {
-  x = mouseX-width/2;
-  y = mouseY-height/2;
+  setPendulumEnd();
+}
+
+function mouseDragged() {
+  print("dragged");
+  setPendulumEnd();
 }
 
 function draw() {
@@ -113,13 +135,23 @@ Path.prototype.run = function() {
   this.display();
 };
 
+Path.prototype.setAll = function(x, y, z) {
+  for(var i=0; i<this.x.length; ++i) {
+    this.x[i] = x;
+    this.y[i] = y;
+    this.z[i] = z;
+  }
+  this.last = 0;
+};
+
+
 Path.prototype.push = function(x, y, z) {
   var prev = this.last;
   this.last = (this.last+1) % MAX_POINTS;
   this.x[this.last] = x;
   this.y[this.last] = y;
   this.z[this.last] = z;
-}
+};
 
 // Method to update position
 Path.prototype.update = function(){
@@ -141,9 +173,9 @@ Path.prototype.display = function() {
     ++count;
     var val = count/MAX_POINTS*204 + 51;
     stroke(val);
-    //var linewidth = map(this.z[pj], 14, 30, 0.5, 2);
-    //strokeWeight(linewidth);
+    var linewidth = map(this.z[pj], 0, 0.26, 0.2, 1.5);
+    strokeWeight(linewidth);
     line(this.x[pj], this.y[pj], this.x[j], this.y[j]);
-    //ellipse(SCALE*this.x[j], SCALE*this.y[j], linewidth, linewidth);
+    //ellipse(this.x[j], this.y[j], linewidth, linewidth);
   }
 };
