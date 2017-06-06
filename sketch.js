@@ -21,7 +21,7 @@ var theta1, theta2, p1, p2;
 var dtheta1, dtheta2, dp1, dp2;
 
 function setup() {
-  createCanvas(windowHeight, windowHeight);
+  createCanvas(windowWidth, windowHeight);
   frameRate(60);
 
   x = 100;
@@ -84,6 +84,9 @@ function simulate_double_pendulum() {
     //line(x1, y1, x, y);
 
     p.push(x, y, dtheta1*dtheta1 + dtheta2*dtheta2);
+    //for(var i=0; i<p.x.length; ++i) {
+      //p.x[i] -= 0.5;
+    //}
     p.display();
   }
 }
@@ -103,7 +106,7 @@ function setPendulumEnd() {
   dtheta1 = dtheta2 = 0;
   x2 = LENGTH*(Math.sin(theta1) + Math.sin(theta2));
   y2 = LENGTH*(Math.cos(theta1) + Math.cos(theta2));
-  paths[0].setAll(x2, y2, -1);
+  paths[0].setAll(x2, y2, 0);
 }
 
 function mouseReleased() {
@@ -173,7 +176,7 @@ Path.prototype.display = function() {
     ++count;
     var val = count/MAX_POINTS*204 + 51;
     stroke(val);
-    var linewidth = map(this.z[pj], 0, 0.26, 0.2, 1.5);
+    var linewidth = map(this.z[j], 0, 0.26, 0.2, 1);
     strokeWeight(linewidth);
     line(this.x[pj], this.y[pj], this.x[j], this.y[j]);
     //ellipse(this.x[j], this.y[j], linewidth, linewidth);
