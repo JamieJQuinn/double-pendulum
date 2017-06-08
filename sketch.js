@@ -56,6 +56,19 @@ function setup() {
   settings.addColor("Pendulum Colour", pendulum.colour, function(c) {
     pendulum.colour = color(c);
   });
+  settings.addRange("Pendulum 1 Mass", 0.1, 100, pendulum.m1, 1, function(val) {
+    print(val);
+    pendulum.m1 = val;
+  });
+  settings.addRange("Pendulum 1 Length", 0.1, 100, pendulum.l1, 1, function(val) {
+    pendulum.l1 = val;
+  });
+  settings.addRange("Pendulum 2 Mass", 0.1, 100, pendulum.m2, 1, function(val) {
+    pendulum.m2 = val;
+  });
+  settings.addRange("Pendulum 2 Length", 0.1, 100, pendulum.l2, 1, function(val) {
+    pendulum.l2 = val;
+  });
 }
 
 function toggleAlphaBlending() {
