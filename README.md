@@ -10,4 +10,6 @@ Check it out [here](http://jamiejquinn.com/double-pendulum/)
 ## Pictures
 ![dance](pics/dance.png)
 
+![sw](pics/sound_wave.png)
+
 ![eye](pics/eye.png)
