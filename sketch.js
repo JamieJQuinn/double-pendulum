@@ -1,44 +1,23 @@
 var MASS = 100;
-var LENGTH = 150;
+var LENGTH = 100;
 var GRAVITY = 9.81;
-var SPRING_K = 50;
 var MAX_POINTS = 1000;
 var VISCOSITY = 0.001;
+var SCALE = 1;
 
 var dt = 0.1;
 
-var paths = []
-
-var sigmaBox;
-var betaBox;
-var rhoBox;
-
 var pendulum;
+var translate_x, translate_y
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   frameRate(60);
 
-  pendulum = new DoublePendulum(0, 0, MASS, LENGTH, MASS, LENGTH, PI/2, 0);
-}
+  translate_x = width/2;
+  translate_y = height/2;
 
-function simulate_spring_pendulum() {
-  for (var i=0; i < paths.length; ++i) {
-    p = paths[i];
-
-    var r = Math.sqrt(x*x + y*y);
-    forceX = -SPRING_K*(r-LENGTH)*x/r;
-    forceY = -SPRING_K*(r-LENGTH)*y/r + MASS*GRAVITY;
-
-    vx += forceX/MASS*dt;
-    vy += forceY/MASS*dt;
-
-    x += vx*dt;
-    y += vy*dt;
-
-    p.push(x, y);
-    p.display();
-  }
+  pendulum = new DoublePendulum(0, 0, MASS, LENGTH, MASS, LENGTH, -PI/8, PI/8);
 }
 
 function setPendulumEnd() {
@@ -63,15 +42,29 @@ function mouseReleased() {
   setPendulumEnd();
 }
 
-function mouseDragged() {
-  print("dragged");
-  setPendulumEnd();
+function mouseWheel(event) {
+  var delta = event.delta/30;
+  SCALE -= delta;
+  var x = (mouseX - translate_x)/SCALE;
+  var y = (mouseY - translate_y)/SCALE;
+  translate_x += x*delta;
+  translate_y += y*delta;
 }
 
 function draw() {
   background(51);
-  translate(width/2, height/2);
+  translate(translate_x, translate_y);
   pendulum.run();
+  pendulum.display();
+  if (keyIsDown(LEFT_ARROW)) {
+    translate_x -= 5;
+  } else if (keyIsDown(RIGHT_ARROW)) {
+    translate_x += 5;
+  } else if (keyIsDown(DOWN_ARROW)) {
+    translate_y += 5;
+  } else if (keyIsDown(UP_ARROW)) {
+    translate_y -= 5;
+  }
 }
 
 var DoublePendulum = function(x0, y0, m1, l1, m2, l2, theta1, theta2) {
@@ -84,7 +77,7 @@ var DoublePendulum = function(x0, y0, m1, l1, m2, l2, theta1, theta2) {
   this.theta2 = theta2;
   this.dtheta1 = 0;
   this.dtheta2 = 0;
-  //this.path = new Path(x0)
+  this.path = new Path(this.pos2()[0], this.pos2()[1], 0);
 };
 
 DoublePendulum.prototype.run = function() {
@@ -98,18 +91,20 @@ DoublePendulum.prototype.run = function() {
   this.theta1 += this.dtheta1 * dt;
   this.theta2 += this.dtheta2 * dt;
 
-  stroke(255);
   var pos1 = this.pos1();
   var pos2 = this.pos2();
-  line(this.origin[0], this.origin[1], pos1[0], pos1[1]);
-  line(pos1[0], pos1[1], pos2[0], pos2[1]);
-
-  //p.push(x, y, dtheta1*dtheta1 + dtheta2*dtheta2);
-  //for(var i=0; i<p.x.length; ++i) {
-    //p.x[i] -= 0.5;
-  //}
-  //p.display();
+  this.path.push(pos2[0], pos2[1], 0);
 };
+
+DoublePendulum.prototype.display = function() {
+  var pos1 = this.pos1();
+  var pos2 = this.pos2();
+  stroke(255);
+  strokeWeight(1);
+  line(SCALE*this.origin[0], SCALE*this.origin[1], SCALE*pos1[0], SCALE*pos1[1]);
+  line(SCALE*pos1[0], SCALE*pos1[1], SCALE*pos2[0], SCALE*pos2[1]);
+  this.path.display();
+}
 
 DoublePendulum.prototype.pos1 = function() {
   return [this.origin[0] + this.l1*Math.sin(this.theta1), this.origin[1] + this.l1*Math.cos(this.theta1)];
@@ -126,7 +121,6 @@ var Path = function(x_0, y_0, z_0) {
   this.y = Array.apply(null, Array(MAX_POINTS)).map(Number.prototype.valueOf,y_0);
   this.z = Array.apply(null, Array(MAX_POINTS)).map(Number.prototype.valueOf,z_0);
   this.last = 0;
-  this.velocity = createVector(0, 0, 0);
 };
 
 Path.prototype.run = function() {
@@ -152,15 +146,6 @@ Path.prototype.push = function(x, y, z) {
   this.z[this.last] = z;
 };
 
-// Method to update position
-Path.prototype.update = function(){
-  var prev = this.last;
-  this.last = (this.last+1) % MAX_POINTS;
-  this.x[this.last] = this.x[prev] + this.velocity.x * dt;
-  this.y[this.last] = this.y[prev] + this.velocity.y * dt;
-  this.z[this.last] = this.z[prev] + this.velocity.z * dt;
-};
-
 // Method to display
 Path.prototype.display = function() {
   var count = 0;
@@ -174,7 +159,7 @@ Path.prototype.display = function() {
     stroke(val);
     var linewidth = map(this.z[j], 0, 0.26, 0.2, 1);
     strokeWeight(linewidth);
-    line(this.x[pj], this.y[pj], this.x[j], this.y[j]);
+    line(SCALE*this.x[pj], SCALE*this.y[pj], SCALE*this.x[j], SCALE*this.y[j]);
     //ellipse(this.x[j], this.y[j], linewidth, linewidth);
   }
 };
