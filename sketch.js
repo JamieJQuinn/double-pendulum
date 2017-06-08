@@ -13,35 +13,13 @@ var sigmaBox;
 var betaBox;
 var rhoBox;
 
-var x, y;
-var vx, vy;
-var forceX, forceY;
-
-var theta1, theta2, p1, p2;
-var dtheta1, dtheta2, dp1, dp2;
+var pendulum;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   frameRate(60);
 
-  x = 100;
-  y = 110;
-  vx = 0;
-  vy = 0;
-
-  theta1 = 0;
-  theta2 = 0;
-  p1 = 0;
-  p2 = 0
-  dtheta1 = 0;
-  dtheta2 = 0;
-  dp1 = 0;
-  dp2 = 0
-
-  x = LENGTH*(Math.sin(theta1) + Math.sin(theta2));
-  y = LENGTH*(Math.cos(theta1) + Math.cos(theta2));
-
-  paths.push(new Path(x, y, 0));
+  pendulum = new DoublePendulum(0, 0, MASS, LENGTH, MASS, LENGTH, PI/2, 0);
 }
 
 function simulate_spring_pendulum() {
@@ -59,34 +37,6 @@ function simulate_spring_pendulum() {
     y += vy*dt;
 
     p.push(x, y);
-    p.display();
-  }
-}
-
-function simulate_double_pendulum() {
-  for (var i=0; i < paths.length; ++i) {
-    p = paths[i];
-
-    var ddtheta2 = -GRAVITY/LENGTH*Math.sin(theta2) - dtheta2*VISCOSITY;
-    var ddtheta1 = -GRAVITY/LENGTH*(Math.sin(theta1) + Math.cos(theta2)*Math.sin(theta1 - theta2)) - dtheta1*VISCOSITY;
-    dtheta1 += ddtheta1 * dt;
-    dtheta2 += ddtheta2 * dt;
-    theta1 += dtheta1 * dt;
-    theta2 += dtheta2 * dt;
-
-    x1 = LENGTH*Math.sin(theta1);
-    y1 = LENGTH*Math.cos(theta1);
-
-    x = LENGTH*(Math.sin(theta1) + Math.sin(theta2));
-    y = LENGTH*(Math.cos(theta1) + Math.cos(theta2));
-
-    //line(0, 0, x1, y1);
-    //line(x1, y1, x, y);
-
-    p.push(x, y, dtheta1*dtheta1 + dtheta2*dtheta2);
-    //for(var i=0; i<p.x.length; ++i) {
-      //p.x[i] -= 0.5;
-    //}
     p.display();
   }
 }
@@ -121,8 +71,54 @@ function mouseDragged() {
 function draw() {
   background(51);
   translate(width/2, height/2);
-  simulate_double_pendulum();
+  pendulum.run();
 }
+
+var DoublePendulum = function(x0, y0, m1, l1, m2, l2, theta1, theta2) {
+  this.origin = [x0, y0];
+  this.m1 = m1;
+  this.l1 = l1;
+  this.m2 = m2;
+  this.l2 = l2;
+  this.theta1 = theta1;
+  this.theta2 = theta2;
+  this.dtheta1 = 0;
+  this.dtheta2 = 0;
+  //this.path = new Path(x0)
+};
+
+DoublePendulum.prototype.run = function() {
+  var delta = this.theta2 - this.theta1;
+  var LHS1 = this.m2*this.l2*Math.pow(this.dtheta2, 2)*Math.sin(delta) - (this.m1+this.m2)*GRAVITY*Math.sin(this.theta1);
+  var LHS2 = -this.l1*Math.pow(this.dtheta1, 2)*Math.sin(delta) - GRAVITY*Math.sin(this.theta2);
+  var ddtheta1 = 1/this.l1*(LHS1 - this.m2*LHS2*Math.cos(delta))/(this.m1 + this.m2*Math.pow(Math.sin(delta), 2));
+  var ddtheta2 = 1/this.l2*(LHS2 - this.l1*ddtheta1*Math.cos(delta));
+  this.dtheta1 += ddtheta1 * dt;
+  this.dtheta2 += ddtheta2 * dt;
+  this.theta1 += this.dtheta1 * dt;
+  this.theta2 += this.dtheta2 * dt;
+
+  stroke(255);
+  var pos1 = this.pos1();
+  var pos2 = this.pos2();
+  line(this.origin[0], this.origin[1], pos1[0], pos1[1]);
+  line(pos1[0], pos1[1], pos2[0], pos2[1]);
+
+  //p.push(x, y, dtheta1*dtheta1 + dtheta2*dtheta2);
+  //for(var i=0; i<p.x.length; ++i) {
+    //p.x[i] -= 0.5;
+  //}
+  //p.display();
+};
+
+DoublePendulum.prototype.pos1 = function() {
+  return [this.origin[0] + this.l1*Math.sin(this.theta1), this.origin[1] + this.l1*Math.cos(this.theta1)];
+};
+
+DoublePendulum.prototype.pos2 = function() {
+  var pos1 = this.pos1();
+  return [pos1[0] + this.l2*Math.sin(this.theta2), pos1[1] + this.l2*Math.cos(this.theta2)];
+};
 
 // A simple Path class
 var Path = function(x_0, y_0, z_0) {
