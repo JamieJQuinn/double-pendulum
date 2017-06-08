@@ -4,23 +4,23 @@ var GRAVITY = 9.81;
 var MAX_POINTS = 1000;
 var VISCOSITY = 0.001;
 var SCALE = 4;
-var BG_COLOUR = 51;
+var bg_colour;
 var ALPHA = 0.1;
 
-var alphaBlendingButton;
 var alphaBlending = false;
 var clearEnabled = true;
-var alphaVal = 1;
+var alphaVal = 255;
 
-var showPathButton;
 var showPathEnabled = true;
-var showPendulumButton;
-var showPendulumEnabled = true;
+var showPendulum1Enabled = true;
+var showPendulum2Enabled = true;
+var paused = false;
 
 var dt = 0.1;
 
 var pendulum;
 var translate_x, translate_y
+var bg_colour;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -28,55 +28,73 @@ function setup() {
 
   translate_x = width/2;
   translate_y = height/2;
+  bg_colour = color(51);
 
-  alphaBlendingButton = createButton('Toggle Alpha Blending');
-  alphaBlendingButton.position(20, 20);
-  alphaBlendingButton.mousePressed(toggleAlphaBlending);
+  pendulum = new DoublePendulum(0, 0, MASS, LENGTH, MASS/2, LENGTH/2, -PI, -PI/2);
 
-  showPathButton = createButton('Toggle Path');
-  showPathButton.position(20, 50);
-  showPathButton.mousePressed(function() {showPathEnabled = !showPathEnabled});
-
-  showPendulumButton = createButton('Toggle Pendulum');
-  showPendulumButton.position(20, 80);
-  showPendulumButton.mousePressed(function() {showPendulumEnabled = !showPendulumEnabled});
-
-  pendulum = new DoublePendulum(0, 0, MASS, LENGTH, MASS, LENGTH, -PI, -PI/2);
+  var settings = QuickSettings.create(5, 5, "Settings ('s' to hide)");
+  settings.setKey("s");
+  settings.addBoolean("Alpha Blending", alphaBlending, toggleAlphaBlending);
+  settings.addBoolean("Path", showPathEnabled, function() {
+    showPathEnabled = !showPathEnabled;
+  });
+  settings.addBoolean("Paused", paused, function() {
+    paused = !paused;
+  });
+  settings.addBoolean("Pendulum 1", showPendulum1Enabled, function() {
+    showPendulum1Enabled = !showPendulum1Enabled;
+  });
+  settings.addBoolean("Pendulum 2", showPendulum2Enabled, function() {
+    showPendulum2Enabled = !showPendulum2Enabled;
+  });
+  settings.addColor("BG Colour", bg_colour, function(c) {
+    bg_colour = color(c);
+  });
+  settings.addColor("Path Colour", pendulum.path.colour, function(c) {
+    pendulum.path.colour = color(c);
+  });
+  settings.addColor("Pendulum Colour", pendulum.colour, function(c) {
+    pendulum.colour = color(c);
+  });
 }
 
 function toggleAlphaBlending() {
   if (alphaBlending) {
-    alphaVal = 1;
+    alphaVal = 255;
   } else {
-    background(BG_COLOUR);
+    background(bg_colour);
     alphaVal = ALPHA;
   }
-  pendulum.getPathColour()[3] = alphaVal;
-  pendulum.colour[3] = alphaVal;
+  pendulum.path.colour._array[3] = alphaVal*4;
+  pendulum.colour._array[3] = alphaVal;
   alphaBlending = !alphaBlending;
   clearEnabled = !clearEnabled;
 }
 
 function setPendulumEnd() {
-  var xPos = mouseX-width/2;
-  var yPos = mouseY-height/2;
+  var xPos = (mouseX-translate_x)/SCALE;
+  var yPos = (mouseY-translate_y)/SCALE;
 
   var alpha = atan2(xPos, yPos);
   var r = Math.sqrt(xPos*xPos + yPos*yPos);
-  if (r >= 2*LENGTH) {
-    theta1 = theta2 = alpha;
+  if (r >= pendulum.l1 + pendulum.l2) {
+    pendulum.theta1 = pendulum.theta2 = alpha;
   } else {
-    theta1 = alpha - Math.acos(r/(2*LENGTH));
-    theta2 = alpha + Math.acos(r/(2*LENGTH));
+    var x2 = (Math.pow(pendulum.l2, 2) - Math.pow(pendulum.l1, 2) + Math.pow(r, 2))/(2*r);
+    var x1 = r - x2;
+    pendulum.theta1 = alpha + Math.acos(x1/pendulum.l1);
+    pendulum.theta2 = alpha - Math.acos(x2/pendulum.l2);
   }
-  dtheta1 = dtheta2 = 0;
-  x2 = LENGTH*(Math.sin(theta1) + Math.sin(theta2));
-  y2 = LENGTH*(Math.cos(theta1) + Math.cos(theta2));
-  paths[0].setAll(x2, y2, 0);
+  pendulum.dtheta1 = pendulum.dtheta2 = 0;
+  var pos = pendulum.pos2();
+  pendulum.path.setAll(pos[0], pos[1], 0);
 }
 
-function mouseReleased() {
-  //setPendulumEnd();
+function mouseClicked() {
+  if (mouseX > width/4 &&
+      mouseX < width*3/4) {
+    setPendulumEnd();
+  }
 }
 
 function mouseWheel(event) {
@@ -90,11 +108,15 @@ function mouseWheel(event) {
 
 function draw() {
   if (clearEnabled) {
-    background(51);
+    background(bg_colour);
   }
   translate(translate_x, translate_y);
-  pendulum.run();
-  pendulum.display();
+  if (! paused) {
+    pendulum.run();
+  }
+  if ( !(paused && alphaBlending) ) {
+    pendulum.display();
+  }
   if (keyIsDown(LEFT_ARROW)) {
     translate_x -= 5;
   } else if (keyIsDown(RIGHT_ARROW)) {
@@ -117,7 +139,7 @@ var DoublePendulum = function(x0, y0, m1, l1, m2, l2, theta1, theta2) {
   this.dtheta1 = 0;
   this.dtheta2 = 0;
   this.path = new Path(this.pos2()[0], this.pos2()[1], 0);
-  this.colour = [0, 0, 0, alphaVal];
+  this.colour = color(255, 255, 255, alphaVal);
 };
 
 DoublePendulum.prototype.run = function() {
@@ -133,25 +155,23 @@ DoublePendulum.prototype.run = function() {
 
   var pos1 = this.pos1();
   var pos2 = this.pos2();
-  this.path.push(pos2[0], pos2[1], 0);
+  this.path.push(pos2[0], pos2[1], Math.pow(this.dtheta1, 2), Math.pow(this.dtheta2, 2));
 };
 
 DoublePendulum.prototype.display = function() {
   var pos1 = this.pos1();
   var pos2 = this.pos2();
-  if (showPendulumEnabled) {
-    stroke(this.colour[0]*255, this.colour[1]*255, this.colour[2]*255, this.colour[3]*255);
+    stroke(this.colour);
     strokeWeight(1);
+  if (showPendulum1Enabled) {
     line(SCALE*this.origin[0], SCALE*this.origin[1], SCALE*pos1[0], SCALE*pos1[1]);
+  }
+  if (showPendulum2Enabled) {
     line(SCALE*pos1[0], SCALE*pos1[1], SCALE*pos2[0], SCALE*pos2[1]);
   }
   if (showPathEnabled) {
     this.path.display();
   }
-};
-
-DoublePendulum.prototype.getPathColour = function() {
-  return this.path.colour;
 };
 
 DoublePendulum.prototype.pos1 = function() {
@@ -169,12 +189,7 @@ var Path = function(x_0, y_0, z_0) {
   this.y = Array.apply(null, Array(MAX_POINTS)).map(Number.prototype.valueOf,y_0);
   this.z = Array.apply(null, Array(MAX_POINTS)).map(Number.prototype.valueOf,z_0);
   this.last = 0;
-  this.colour = [1, 1, 1, alphaVal];
-};
-
-Path.prototype.run = function() {
-  this.update();
-  this.display();
+  this.colour = color(255, 255, 255, alphaVal);
 };
 
 Path.prototype.setAll = function(x, y, z) {
@@ -185,7 +200,6 @@ Path.prototype.setAll = function(x, y, z) {
   }
   this.last = 0;
 };
-
 
 Path.prototype.push = function(x, y, z) {
   var prev = this.last;
@@ -205,8 +219,8 @@ Path.prototype.display = function() {
       pj = j;
       j = (j+1) % MAX_POINTS;
       ++count;
-      var val = count/MAX_POINTS*204 + 51;
-      stroke(val);
+      var val = count/MAX_POINTS*255;
+      stroke(red(this.colour), blue(this.colour), green(this.colour), val);
       var linewidth = map(this.z[j], 0, 0.26, 0.2, 1);
       strokeWeight(linewidth);
       line(SCALE*this.x[pj], SCALE*this.y[pj], SCALE*this.x[j], SCALE*this.y[j]);
@@ -215,11 +229,7 @@ Path.prototype.display = function() {
   } else {
     var j = this.last;
     var pj = (this.last-1)%MAX_POINTS;
-    var val = 255-BG_COLOUR;
-    stroke(val*this.colour[0]+BG_COLOUR,
-           val*this.colour[1]+BG_COLOUR,
-           val*this.colour[2]+BG_COLOUR,
-           255*this.colour[3]);
+    stroke(this.colour);
     line(SCALE*this.x[pj], SCALE*this.y[pj], SCALE*this.x[j], SCALE*this.y[j]);
   }
 };
