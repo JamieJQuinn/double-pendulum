@@ -1,9 +1,21 @@
 var MASS = 100;
-var LENGTH = 100;
+var LENGTH = 50;
 var GRAVITY = 9.81;
 var MAX_POINTS = 1000;
 var VISCOSITY = 0.001;
-var SCALE = 1;
+var SCALE = 4;
+var BG_COLOUR = 51;
+var ALPHA = 0.1;
+
+var alphaBlendingButton;
+var alphaBlending = false;
+var clearEnabled = true;
+var alphaVal = 1;
+
+var showPathButton;
+var showPathEnabled = true;
+var showPendulumButton;
+var showPendulumEnabled = true;
 
 var dt = 0.1;
 
@@ -17,7 +29,32 @@ function setup() {
   translate_x = width/2;
   translate_y = height/2;
 
-  pendulum = new DoublePendulum(0, 0, MASS, LENGTH, MASS, LENGTH, -PI/8, PI/8);
+  alphaBlendingButton = createButton('Toggle Alpha Blending');
+  alphaBlendingButton.position(20, 20);
+  alphaBlendingButton.mousePressed(toggleAlphaBlending);
+
+  showPathButton = createButton('Toggle Path');
+  showPathButton.position(20, 50);
+  showPathButton.mousePressed(function() {showPathEnabled = !showPathEnabled});
+
+  showPendulumButton = createButton('Toggle Pendulum');
+  showPendulumButton.position(20, 80);
+  showPendulumButton.mousePressed(function() {showPendulumEnabled = !showPendulumEnabled});
+
+  pendulum = new DoublePendulum(0, 0, MASS, LENGTH, MASS, LENGTH, -PI, -PI/2);
+}
+
+function toggleAlphaBlending() {
+  if (alphaBlending) {
+    alphaVal = 1;
+  } else {
+    background(BG_COLOUR);
+    alphaVal = ALPHA;
+  }
+  pendulum.getPathColour()[3] = alphaVal;
+  pendulum.colour[3] = alphaVal;
+  alphaBlending = !alphaBlending;
+  clearEnabled = !clearEnabled;
 }
 
 function setPendulumEnd() {
@@ -39,7 +76,7 @@ function setPendulumEnd() {
 }
 
 function mouseReleased() {
-  setPendulumEnd();
+  //setPendulumEnd();
 }
 
 function mouseWheel(event) {
@@ -52,7 +89,9 @@ function mouseWheel(event) {
 }
 
 function draw() {
-  background(51);
+  if (clearEnabled) {
+    background(51);
+  }
   translate(translate_x, translate_y);
   pendulum.run();
   pendulum.display();
@@ -78,6 +117,7 @@ var DoublePendulum = function(x0, y0, m1, l1, m2, l2, theta1, theta2) {
   this.dtheta1 = 0;
   this.dtheta2 = 0;
   this.path = new Path(this.pos2()[0], this.pos2()[1], 0);
+  this.colour = [0, 0, 0, alphaVal];
 };
 
 DoublePendulum.prototype.run = function() {
@@ -99,12 +139,20 @@ DoublePendulum.prototype.run = function() {
 DoublePendulum.prototype.display = function() {
   var pos1 = this.pos1();
   var pos2 = this.pos2();
-  stroke(255);
-  strokeWeight(1);
-  line(SCALE*this.origin[0], SCALE*this.origin[1], SCALE*pos1[0], SCALE*pos1[1]);
-  line(SCALE*pos1[0], SCALE*pos1[1], SCALE*pos2[0], SCALE*pos2[1]);
-  this.path.display();
-}
+  if (showPendulumEnabled) {
+    stroke(this.colour[0]*255, this.colour[1]*255, this.colour[2]*255, this.colour[3]*255);
+    strokeWeight(1);
+    line(SCALE*this.origin[0], SCALE*this.origin[1], SCALE*pos1[0], SCALE*pos1[1]);
+    line(SCALE*pos1[0], SCALE*pos1[1], SCALE*pos2[0], SCALE*pos2[1]);
+  }
+  if (showPathEnabled) {
+    this.path.display();
+  }
+};
+
+DoublePendulum.prototype.getPathColour = function() {
+  return this.path.colour;
+};
 
 DoublePendulum.prototype.pos1 = function() {
   return [this.origin[0] + this.l1*Math.sin(this.theta1), this.origin[1] + this.l1*Math.cos(this.theta1)];
@@ -121,6 +169,7 @@ var Path = function(x_0, y_0, z_0) {
   this.y = Array.apply(null, Array(MAX_POINTS)).map(Number.prototype.valueOf,y_0);
   this.z = Array.apply(null, Array(MAX_POINTS)).map(Number.prototype.valueOf,z_0);
   this.last = 0;
+  this.colour = [1, 1, 1, alphaVal];
 };
 
 Path.prototype.run = function() {
@@ -151,15 +200,26 @@ Path.prototype.display = function() {
   var count = 0;
   var j = (this.last+1)%MAX_POINTS;
   var pj = this.last;
-  while (count < MAX_POINTS - 1 ){
-    pj = j;
-    j = (j+1) % MAX_POINTS;
-    ++count;
-    var val = count/MAX_POINTS*204 + 51;
-    stroke(val);
-    var linewidth = map(this.z[j], 0, 0.26, 0.2, 1);
-    strokeWeight(linewidth);
+  if (!alphaBlending) {
+    while (count < MAX_POINTS - 1 ){
+      pj = j;
+      j = (j+1) % MAX_POINTS;
+      ++count;
+      var val = count/MAX_POINTS*204 + 51;
+      stroke(val);
+      var linewidth = map(this.z[j], 0, 0.26, 0.2, 1);
+      strokeWeight(linewidth);
+      line(SCALE*this.x[pj], SCALE*this.y[pj], SCALE*this.x[j], SCALE*this.y[j]);
+      //ellipse(this.x[j], this.y[j], linewidth, linewidth);
+    }
+  } else {
+    var j = this.last;
+    var pj = (this.last-1)%MAX_POINTS;
+    var val = 255-BG_COLOUR;
+    stroke(val*this.colour[0]+BG_COLOUR,
+           val*this.colour[1]+BG_COLOUR,
+           val*this.colour[2]+BG_COLOUR,
+           255*this.colour[3]);
     line(SCALE*this.x[pj], SCALE*this.y[pj], SCALE*this.x[j], SCALE*this.y[j]);
-    //ellipse(this.x[j], this.y[j], linewidth, linewidth);
   }
 };
