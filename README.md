@@ -1,8 +1,13 @@
 # double-pendulum
 Double pendulum simulation written in JS + P5
 
-Ever wanted to play with a double pendulum? May be extended to arbitrary pendulums @ some point.
+Ever wanted to play with a double pendulum?
 
-Originally done using lagrangian mechanics, it turns out to be much simpler with Newtonian mechanics (although it 100% does not conserve energy).
+The equations were derived using Lagrangian mechanics. This may be changed to Newtonian mechanics to allow for multiple pendulums.
 
 Check it out [here](http://jamiejquinn.com/double-pendulum/)
+
+## Pictures
+![dance](pics/dance.png)
+
+![eye](pics/eye.png)
