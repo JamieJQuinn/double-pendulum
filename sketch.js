@@ -15,6 +15,7 @@ var showPathEnabled = true;
 var showPendulum1Enabled = true;
 var showPendulum2Enabled = true;
 var paused = false;
+var soundWaveModeEnabled = false;
 
 var dt = 0.1;
 
@@ -41,11 +42,24 @@ function setup() {
   settings.addBoolean("Paused", paused, function() {
     paused = !paused;
   });
+  settings.addBoolean("Background Clearing", clearEnabled, function() {
+    clearEnabled = !clearEnabled;
+  });
   settings.addBoolean("Pendulum 1", showPendulum1Enabled, function() {
     showPendulum1Enabled = !showPendulum1Enabled;
   });
   settings.addBoolean("Pendulum 2", showPendulum2Enabled, function() {
     showPendulum2Enabled = !showPendulum2Enabled;
+  });
+  settings.addBoolean("Sound Wave Mode", soundWaveModeEnabled, function() {
+    if (soundWaveModeEnabled) {
+      pendulum.origin = [0, 0];
+      pendulum.path.colour._array[3] = ALPHA;
+    } else {
+      pendulum.origin = getSimulationCoordinates(width*3/4, height/2);
+      pendulum.path.colour._array[3] = alphaVal;
+    }
+    soundWaveModeEnabled = !soundWaveModeEnabled;
   });
   settings.addColor("BG Colour", bg_colour, function(c) {
     bg_colour = color(c);
@@ -82,6 +96,10 @@ function toggleAlphaBlending() {
   pendulum.colour._array[3] = alphaVal;
   alphaBlending = !alphaBlending;
   clearEnabled = !clearEnabled;
+}
+
+function getSimulationCoordinates (x, y) {
+  return [(x-translate_x)/SCALE, (y-translate_y)/SCALE];
 }
 
 function setPendulumEnd() {
@@ -168,7 +186,12 @@ DoublePendulum.prototype.run = function() {
 
   var pos1 = this.pos1();
   var pos2 = this.pos2();
-  this.path.push(pos2[0], pos2[1], Math.pow(this.dtheta1, 2), Math.pow(this.dtheta2, 2));
+
+  if( soundWaveModeEnabled ) {
+    this.path.push(this.origin[0], pos2[1], 0);
+  } else {
+    this.path.push(pos2[0], pos2[1], Math.pow(this.dtheta1, 2), Math.pow(this.dtheta2, 2));
+  }
 };
 
 DoublePendulum.prototype.display = function() {
@@ -181,6 +204,11 @@ DoublePendulum.prototype.display = function() {
   }
   if (showPendulum2Enabled) {
     line(SCALE*pos1[0], SCALE*pos1[1], SCALE*pos2[0], SCALE*pos2[1]);
+  }
+  if (soundWaveModeEnabled && !paused) {
+    for (var i=0; i<this.path.x.length; ++i) {
+      this.path.x[i] -= 0.2;
+    }
   }
   if (showPathEnabled) {
     this.path.display();
