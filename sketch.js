@@ -84,10 +84,7 @@ function toggleAlphaBlending() {
   clearEnabled = !clearEnabled;
 }
 
-function setPendulumEnd() {
-  var xPos = (mouseX-translate_x)/SCALE;
-  var yPos = (mouseY-translate_y)/SCALE;
-
+function setPendulumEnd(xPos, yPos) {
   var alpha = atan2(xPos, yPos);
   var r = Math.sqrt(xPos*xPos + yPos*yPos);
   if (r >= pendulum.l1 + pendulum.l2) {
@@ -104,10 +101,9 @@ function setPendulumEnd() {
 }
 
 function mouseClicked() {
-  if (mouseX > width/4 &&
-      mouseX < width*3/4) {
-    setPendulumEnd();
-  }
+  var xPos = (mouseX-translate_x)/SCALE;
+  var yPos = (mouseY-translate_y)/SCALE;
+  setPendulumEnd(xPos, yPos);
 }
 
 function mouseWheel(event) {
@@ -233,7 +229,7 @@ Path.prototype.display = function() {
       j = (j+1) % MAX_POINTS;
       ++count;
       var val = count/MAX_POINTS*255;
-      stroke(red(this.colour), blue(this.colour), green(this.colour), val);
+      stroke(red(this.colour), green(this.colour), blue(this.colour), val);
       var linewidth = map(this.z[j], 0, 0.26, 0.2, 1);
       strokeWeight(linewidth);
       line(SCALE*this.x[pj], SCALE*this.y[pj], SCALE*this.x[j], SCALE*this.y[j]);
