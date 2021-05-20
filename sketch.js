@@ -14,7 +14,7 @@ var alphaVal = 255;
 var showPathEnabled = true;
 var showPendulum1Enabled = true;
 var showPendulum2Enabled = true;
-var showVelocity = true;
+var showVelocity = false;
 var paused = false;
 var soundWaveModeEnabled = false;
 
